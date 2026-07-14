@@ -1,0 +1,976 @@
+﻿@model Projis.ApontamentoProducao.Models.ApontamentoProducaoViewModel
+
+@{
+    ViewData["Title"] = "Apontamento de Produção";
+    Layout = "_Layout";
+}
+
+<div class="app">
+    <header class="topbar">
+        <div class="brand">
+            <h1>Apontamento de Produção</h1>
+            <p>Modelo para tablet: várias OPs abertas, entrada e saída ao mesmo tempo, com cartões limpos.</p>
+        </div>
+        <div class="clock">
+            <span>Agora</span>
+            <strong id="clock">--:--</strong>
+        </div>
+    </header>
+
+    <section class="lane">
+        <div>
+            <button class="btn ghost" id="btnSample">+ OP exemplo</button>
+        </div>
+        <div class="quick-add">
+            <div class="field">
+                <label>OP</label>
+                <input id="opNumero" placeholder="@Model.CodigoOs" inputmode="numeric" />
+            </div>
+            <div class="field">
+                <label>Rot./Gan.</label>
+                <input id="opRotativo" placeholder="12" inputmode="numeric" />
+            </div>
+            <div class="field">
+                <label>Produto / Cliente</label>
+                <input id="opProduto" placeholder="@Model.DescricaoProduto - @Model.CodCliente" />
+            </div>
+            <div class="field">
+                <label>Status inicial</label>
+                <select id="opStatus">
+                    <option value="entrada">Entrando</option>
+                    <option value="processo">Em processo</option>
+                    <option value="saida">Saindo</option>
+                </select>
+            </div>
+        </div>
+        <button class="btn green" id="btnAddOp">Incluir OP</button>
+    </section>
+
+    <main class="main">
+        <aside class="ops-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <h2>OPs na linha</h2>
+                    <p>Toque em uma OP para apontar.</p>
+                </div>
+                <span class="status st-processo" id="opCount">0 abertas</span>
+            </div>
+            <div class="op-list" id="opList"></div>
+        </aside>
+
+        <section class="work-panel">
+            <div class="active-op">
+                <div>
+                    <h2 id="activeTitle">Nenhuma OP selecionada</h2>
+                    <p id="activeSubtitle">Inclua ou selecione uma OP para iniciar o apontamento.</p>
+                </div>
+                <div class="active-stats">
+                    <div class="stat-card">
+                        <span>Qtd. apontada</span>
+                        <strong id="stQtd" class="green">0</strong>
+                    </div>
+                    <div class="stat-card">
+                        <span>Reprovado</span>
+                        <strong id="stRep" class="red">0</strong>
+                    </div>
+                    <div class="stat-card">
+                        <span>Paradas</span>
+                        <strong id="stPar" class="yellow">0</strong>
+                    </div>
+                    <div class="stat-card">
+                        <span>Tempo</span>
+                        <strong id="stTempo" class="blue">00:00</strong>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="tabs">
+                <button class="tab active" data-tab="tabApontar">Apontar</button>
+                <button class="tab" data-tab="tabFluxo">Entrada / Saída</button>
+                <button class="tab" data-tab="tabCamadas">Camadas</button>
+                <button class="tab" data-tab="tabParadas">Paradas</button>
+                <button class="tab" data-tab="tabQualidade">Qualidade</button>
+                <button class="tab" data-tab="tabHistorico">Histórico</button>
+            </nav>
+
+            <div class="tab-content">
+                <!-- Apontar -->
+                <section class="tab-panel active" id="tabApontar">
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-title">
+                                <div>
+                                    <h3>Novo apontamento</h3>
+                                    <p>Registre a quantidade da OP selecionada.</p>
+                                </div>
+                            </div>
+                            <div class="form-grid">
+                                <div class="field">
+                                    <label>Quantidade</label>
+                                    <input id="apQtd" value="100" inputmode="decimal" />
+                                </div>
+                                <div class="field">
+                                    <label>Peso KG</label>
+                                    <input id="apPeso" value="7,50" inputmode="decimal" />
+                                </div>
+                                <div class="field">
+                                    <label>Rot./Gan.</label>
+                                    <input id="apRot" value="12" inputmode="numeric" />
+                                </div>
+                                <div class="field">
+                                    <label>Amp. Deseng.</label>
+                                    <input id="apAmpDes" value="8.5" />
+                                </div>
+                                <div class="field">
+                                    <label>Amp. Banho</label>
+                                    <input id="apAmpBanho" value="12.0" />
+                                </div>
+                                <div class="field">
+                                    <label>Operador</label>
+                                    <input id="apOperador" value="Fernando" />
+                                </div>
+                            </div>
+                            <div class="actions">
+                                <button class="btn green" id="btnApontar">Incluir apontamento</button>
+                                <button class="btn secondary" id="btnClearAp">Limpar</button>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-title">
+                                <div>
+                                    <h3>Últimos apontamentos</h3>
+                                    <p>Cards curtos para não poluir o tablet.</p>
+                                </div>
+                            </div>
+                            <div class="record-list" id="apontamentosList"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Fluxo -->
+                <section class="tab-panel" id="tabFluxo">
+                    <div class="card">
+                        <div class="card-title">
+                            <div>
+                                <h3>Controle de fluxo da linha</h3>
+                                <p>Ideal quando uma OP está saindo e outra está entrando.</p>
+                            </div>
+                        </div>
+                        <div class="form-grid">
+                            <button class="btn" id="btnEntrada">Marcar como Entrando</button>
+                            <button class="btn green" id="btnProcesso">Marcar Em Processo</button>
+                            <button class="btn yellow" id="btnSaida">Marcar como Saindo</button>
+                        </div>
+                        <div class="actions">
+                            <button class="btn purple" id="btnDuplicar">Duplicar OP para próxima gancheira</button>
+                            <button class="btn red" id="btnFinalizar">Finalizar OP ativa</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">
+                            <div>
+                                <h3>Quadro Entrada / Processo / Saída</h3>
+                                <p>Visão geral das OPs simultâneas.</p>
+                            </div>
+                        </div>
+                        <div class="grid-2" id="kanban"></div>
+                    </div>
+                </section>
+
+                <!-- Camadas -->
+                <section class="tab-panel" id="tabCamadas">
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-title">
+                                <div>
+                                    <h3>Registrar camadas</h3>
+                                    <p>Inicial ou final, com média calculada.</p>
+                                </div>
+                            </div>
+                            <div class="form-grid">
+                                <div class="field"><label>Camada 1</label><input id="cam1" value="8.1" inputmode="decimal" /></div>
+                                <div class="field"><label>Camada 2</label><input id="cam2" value="8.3" inputmode="decimal" /></div>
+                                <div class="field"><label>Camada 3</label><input id="cam3" value="8.4" inputmode="decimal" /></div>
+                                <div class="field"><label>Camada 4</label><input id="cam4" value="8.2" inputmode="decimal" /></div>
+                                <div class="field"><label>Camada 5</label><input id="cam5" value="8.5" inputmode="decimal" /></div>
+                                <div class="field">
+                                    <label>Tipo</label>
+                                    <select id="camTipo">
+                                        <option value="Inicial">Inicial</option>
+                                        <option value="Final">Final</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="actions">
+                                <button class="btn" id="btnCamada">Salvar camadas</button>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-title">
+                                <div>
+                                    <h3>Última medição</h3>
+                                    <p>Visual rápido para conferência.</p>
+                                </div>
+                            </div>
+                            <div class="layers" id="layersPreview">
+                                <div class="layer"><span>Camada 1</span><strong>--</strong></div>
+                                <div class="layer"><span>Camada 2</span><strong>--</strong></div>
+                                <div class="layer"><span>Camada 3</span><strong>--</strong></div>
+                                <div class="layer"><span>Camada 4</span><strong>--</strong></div>
+                                <div class="layer"><span>Média</span><strong>--</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Paradas -->
+                <section class="tab-panel" id="tabParadas">
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-title">
+                                <div>
+                                    <h3>Parada da OP ativa</h3>
+                                    <p>Pausa e retomada sem sair da tela.</p>
+                                </div>
+                            </div>
+                            <div class="form-grid two">
+                                <div class="field">
+                                    <label>Tipo</label>
+                                    <select id="parTipo">
+                                        <option>Parada Programada</option>
+                                        <option>Parada não Programada</option>
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label>Ocorrência</label>
+                                    <select id="parOcorrencia">
+                                        <option>Limpeza de Tanque</option>
+                                        <option>Falta de M.O.</option>
+                                        <option>Falha/Quebra de Equip.</option>
+                                        <option>Outros</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-grid one" style="margin-top:10px">
+                                <div class="field">
+                                    <label>Solução / observação</label>
+                                    <textarea id="parObs" placeholder="Descreva a parada..."></textarea>
+                                </div>
+                            </div>
+                            <div class="actions">
+                                <button class="btn yellow" id="btnIniciarParada">Iniciar parada</button>
+                                <button class="btn green" id="btnFinalizarParada">Finalizar parada</button>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-title">
+                                <div>
+                                    <h3>Paradas lançadas</h3>
+                                    <p>Histórico da OP ativa.</p>
+                                </div>
+                            </div>
+                            <div class="record-list" id="paradasList"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Qualidade -->
+                <section class="tab-panel" id="tabQualidade">
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-title">
+                                <div>
+                                    <h3>Qualidade / retrabalho</h3>
+                                    <p>Motivo e observação em tela, sem popup.</p>
+                                </div>
+                            </div>
+                            <div class="form-grid two">
+                                <div class="field">
+                                    <label>Qtd. reprovada</label>
+                                    <input id="qtdRep" value="5" inputmode="decimal" />
+                                </div>
+                                <div class="field">
+                                    <label>Motivo</label>
+                                    <select id="motivoRep">
+                                        <option>MANCHAS</option>
+                                        <option>COLORAÇÃO</option>
+                                        <option>BOLHAS</option>
+                                        <option>COBERTURA INSUFICIENTE</option>
+                                        <option>CORROSÃO</option>
+                                        <option>FALHA DE CORRENTE</option>
+                                        <option>DESPLACAMENTO</option>
+                                        <option>PEÇA QUEIMADA</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-grid one" style="margin-top:10px">
+                                <div class="field">
+                                    <label>Observação</label>
+                                    <textarea id="obsRep" placeholder="Observação do retrabalho..."></textarea>
+                                </div>
+                            </div>
+                            <div class="actions">
+                                <button class="btn red" id="btnQualidade">Adicionar reprovação</button>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-title">
+                                <div>
+                                    <h3>Reprovações</h3>
+                                    <p>Itens separados para retrabalho.</p>
+                                </div>
+                            </div>
+                            <div class="record-list" id="qualidadeList"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Histórico -->
+                <section class="tab-panel" id="tabHistorico">
+                    <div class="card">
+                        <div class="card-title">
+                            <div>
+                                <h3>Histórico completo da OP</h3>
+                                <p>Eventos gerados pelo protótipo.</p>
+                            </div>
+                        </div>
+                        <div class="record-list" id="historicoList"></div>
+                    </div>
+                </section>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bottom-bar">
+        <div class="actions">
+            <button class="btn ghost" id="btnExport">Exportar JSON</button>
+            <button class="btn secondary" id="btnReset">Limpar demo</button>
+        </div>
+        <div class="actions">
+            <button class="btn yellow" id="btnParadaRapida">Parada rápida</button>
+            <button class="btn green" id="btnSalvar">Salvar geral</button>
+        </div>
+    </footer>
+</div>
+
+<div class="toast" id="toast">OK</div>
+
+@section Scripts {
+    <script>
+        const state = {
+            activeId: null,
+            ops: []
+        };
+
+                @if (Model != null)
+        {
+                <text>
+                    state.ops.push({
+                        id: "op-" + "@Model.CodigoOs",
+                        numero: "@Model.CodigoOs",
+                        rotativo: "1", // pode ser derivado de roteiro depois
+                        produto: "@Model.DescricaoProduto · Cliente @Model.CodCliente",
+                        cliente: "@Model.CodCliente",
+                        status: "@(Model.StatusOp == "FI" ? "saida" : "entrada")",
+                        total: @Model.QuantidadeTotal,
+                        qtd: @Model.QuantidadeAprovada,
+                        peso: 0,                     // você pode mapear peso depois
+                        reprovado: 0,                // idem, ou usar SEAM_QTD_REPROVADA
+                        tempoMin: 0,
+                        startedAt: Date.now(),
+                        apontamentos: [],
+                        paradas: [],
+                        qualidade: [],
+                        camadas: [],
+                        historico: []
+                    });
+                    state.activeId = state.ops[0].id;
+                </text>
+        }
+
+
+        const $ = (id) => document.getElementById(id);
+
+        function uid() {
+            return Math.random().toString(36).slice(2, 10);
+        }
+
+        function nowTime() {
+            return new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+        }
+
+        function formatDateTime() {
+            return new Date().toLocaleString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+        }
+
+        function num(value) {
+            const parsed = parseFloat(String(value || "0").replace(/\./g, "").replace(",", "."));
+            return isNaN(parsed) ? 0 : parsed;
+        }
+
+        function fmt(n, decimals = 0) {
+            return Number(n || 0).toLocaleString("pt-BR", {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            });
+        }
+
+        function toast(message) {
+            const el = $("toast");
+            el.textContent = message;
+            el.classList.add("show");
+            setTimeout(() => el.classList.remove("show"), 1800);
+        }
+
+        function statusLabel(status) {
+            return {
+                entrada: "Entrando",
+                processo: "Em processo",
+                saida: "Saindo",
+                pausada: "Pausada",
+                finalizada: "Finalizada"
+            }[status] || status;
+        }
+
+        function statusClass(status) {
+            return "st-" + status;
+        }
+
+        function activeOp() {
+            return state.ops.find(op => op.id === state.activeId) || null;
+        }
+
+        function addHistory(op, tipo, texto) {
+            op.historico.unshift({
+                id: uid(),
+                tipo,
+                texto,
+                hora: formatDateTime()
+            });
+        }
+
+        function addOp(data) {
+            const total = data.total || 1000;
+            const op = {
+                id: uid(),
+                numero: data.numero || String(400 + state.ops.length + 1).padStart(6, "0"),
+                rotativo: data.rotativo || String(10 + state.ops.length),
+                produto: data.produto || "Produto / Cliente não informado",
+                cliente: data.cliente || "Cliente",
+                status: data.status || "entrada",
+                total,
+                qtd: data.qtd || 0,
+                peso: data.peso || 0,
+                reprovado: 0,
+                tempoMin: 0,
+                startedAt: Date.now(),
+                apontamentos: [],
+                paradas: [],
+                qualidade: [],
+                camadas: [],
+                historico: []
+            };
+
+            addHistory(op, "OP", "OP incluída na linha como " + statusLabel(op.status));
+            state.ops.unshift(op);
+            state.activeId = op.id;
+            render();
+            toast("OP incluída");
+        }
+
+        function seed() {
+            if (state.ops.length) return;
+            addOp({
+                numero: "000428",
+                rotativo: "10",
+                produto: "Suporte zincado · Metalúrgica Alfa",
+                status: "saida",
+                total: 1250,
+                qtd: 820,
+                peso: 58.2
+            });
+            addOp({
+                numero: "000429",
+                rotativo: "11",
+                produto: "Arruela especial · Cliente Beta",
+                status: "processo",
+                total: 900,
+                qtd: 310,
+                peso: 21.7
+            });
+            addOp({
+                numero: "000430",
+                rotativo: "12",
+                produto: "Gancho industrial · Cliente Gamma",
+                status: "entrada",
+                total: 1600,
+                qtd: 0,
+                peso: 0
+            });
+            state.activeId = state.ops[1].id;
+            render();
+        }
+
+        function renderOps() {
+            const list = $("opList");
+            const abertas = state.ops.filter(op => op.status !== "finalizada").length;
+            $("opCount").textContent = abertas + " abertas";
+
+            if (!state.ops.length) {
+                list.innerHTML = '<div class="empty">Nenhuma OP na linha.</div>';
+                return;
+            }
+
+            list.innerHTML = state.ops.map(op => {
+                const percent = op.total > 0 ? Math.min(100, Math.round((op.qtd / op.total) * 100)) : 0;
+                return `
+                    <article class="op-tile ${op.id === state.activeId ? "active" : ""}" data-op="${op.id}">
+                        <div class="op-tile-head">
+                            <div>
+                                <h3>OP ${op.numero}</h3>
+                                <p>Rot./Gan. ${op.rotativo} · ${op.produto}</p>
+                            </div>
+                            <span class="status ${statusClass(op.status)}">${statusLabel(op.status)}</span>
+                        </div>
+                        <div class="op-progress">
+                            <div class="progress-text">
+                                <span>${fmt(op.qtd)} de ${fmt(op.total)} pçs</span>
+                                <span>${percent}%</span>
+                            </div>
+                            <div class="bar"><span style="width:${percent}%"></span></div>
+                        </div>
+                        <div class="op-metrics">
+                            <div class="mini"><span>Peso</span><strong>${fmt(op.peso, 2)} kg</strong></div>
+                            <div class="mini"><span>Reprov.</span><strong>${fmt(op.reprovado)}</strong></div>
+                            <div class="mini"><span>Paradas</span><strong>${op.paradas.length}</strong></div>
+                        </div>
+                    </article>
+                `;
+            }).join("");
+
+            document.querySelectorAll(".op-tile").forEach(tile => {
+                tile.addEventListener("click", () => {
+                    state.activeId = tile.dataset.op;
+                    render();
+                });
+            });
+        }
+
+        function renderActive() {
+            const op = activeOp();
+
+            if (!op) {
+                $("activeTitle").textContent = "Nenhuma OP selecionada";
+                $("activeSubtitle").textContent = "Inclua ou selecione uma OP para iniciar o apontamento.";
+                $("stQtd").textContent = "0";
+                $("stRep").textContent = "0";
+                $("stPar").textContent = "0";
+                $("stTempo").textContent = "00:00";
+                return;
+            }
+
+            $("activeTitle").textContent = "OP " + op.numero;
+            $("activeSubtitle").textContent =
+                "Rot./Gan. " + op.rotativo + " · " + op.produto + " · " + statusLabel(op.status);
+            $("stQtd").textContent = fmt(op.qtd);
+            $("stRep").textContent = fmt(op.reprovado);
+            $("stPar").textContent = op.paradas.length;
+            $("stTempo").textContent = minutesToHHMM(
+                op.tempoMin + Math.floor((Date.now() - op.startedAt) / 60000)
+            );
+        }
+
+        function minutesToHHMM(min) {
+            const h = Math.floor((min || 0) / 60);
+            const m = (min || 0) % 60;
+            return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+        }
+
+        function renderList(id, items, emptyText, renderItem) {
+            const el = $(id);
+            el.innerHTML = items.length ? items.map(renderItem).join("") : `<div class="empty">${emptyText}</div>`;
+        }
+
+        function renderDetails() {
+            const op = activeOp();
+
+            if (!op) {
+                ["apontamentosList", "paradasList", "qualidadeList", "historicoList"].forEach(id => {
+                    $(id).innerHTML = '<div class="empty">Selecione uma OP.</div>';
+                });
+                $("layersPreview").innerHTML = `
+                    <div class="layer"><span>Camada 1</span><strong>--</strong></div>
+                    <div class="layer"><span>Camada 2</span><strong>--</strong></div>
+                    <div class="layer"><span>Camada 3</span><strong>--</strong></div>
+                    <div class="layer"><span>Camada 4</span><strong>--</strong></div>
+                    <div class="layer"><span>Média</span><strong>--</strong></div>`;
+                return;
+            }
+
+            renderList("apontamentosList", op.apontamentos, "Nenhum apontamento lançado.", (a, idx) => `
+                <div class="record">
+                    <div class="record-index">${op.apontamentos.length - idx}</div>
+                    <div>
+                        <h4>Rot./Gan. ${a.rotativo} · ${fmt(a.qtd)} pçs</h4>
+                        <p>${a.hora} · ${fmt(a.peso, 2)} kg · Amp. ${a.ampDes}/${a.ampBanho} · ${a.operador}</p>
+                    </div>
+                    <small>${a.status}</small>
+                </div>
+            `);
+
+            renderList("paradasList", op.paradas, "Nenhuma parada lançada.", (p, idx) => `
+                <div class="record">
+                    <div class="record-index">${idx + 1}</div>
+                    <div>
+                        <h4>${p.ocorrencia}</h4>
+                        <p>${p.tipo} · Início ${p.inicio} · Fim ${p.fim || "--"} · ${p.obs || "Sem observação"}</p>
+                    </div>
+                    <span class="status ${p.fim ? "st-finalizada" : "st-pausada"}">
+                        ${p.fim ? "Finalizada" : "Aberta"}
+                    </span>
+                </div>
+            `);
+
+            renderList("qualidadeList", op.qualidade, "Nenhuma reprovação lançada.", (q, idx) => `
+                <div class="record">
+                    <div class="record-index">${idx + 1}</div>
+                    <div>
+                        <h4>${fmt(q.qtd)} pçs · ${q.motivo}</h4>
+                        <p>${q.hora} · ${q.obs || "Sem observação"}</p>
+                    </div>
+                    <span class="status st-pausada">Retrabalho</span>
+                </div>
+            `);
+
+            renderList("historicoList", op.historico, "Sem histórico.", (h, idx) => `
+                <div class="record">
+                    <div class="record-index">${idx + 1}</div>
+                    <div>
+                        <h4>${h.tipo}</h4>
+                        <p>${h.texto}</p>
+                    </div>
+                    <small>${h.hora}</small>
+                </div>
+            `);
+
+            const last = op.camadas[0];
+            if (!last) {
+                $("layersPreview").innerHTML = `
+                    <div class="layer"><span>Camada 1</span><strong>--</strong></div>
+                    <div class="layer"><span>Camada 2</span><strong>--</strong></div>
+                    <div class="layer"><span>Camada 3</span><strong>--</strong></div>
+                    <div class="layer"><span>Camada 4</span><strong>--</strong></div>
+                    <div class="layer"><span>Média</span><strong>--</strong></div>`;
+            } else {
+                $("layersPreview").innerHTML = `
+                    <div class="layer"><span>Camada 1</span><strong>${fmt(last.valores[0], 1)}</strong></div>
+                    <div class="layer"><span>Camada 2</span><strong>${fmt(last.valores[1], 1)}</strong></div>
+                    <div class="layer"><span>Camada 3</span><strong>${fmt(last.valores[2], 1)}</strong></div>
+                    <div class="layer"><span>Camada 4</span><strong>${fmt(last.valores[3], 1)}</strong></div>
+                    <div class="layer"><span>${last.tipo}</span><strong class="green">${fmt(last.media, 1)}</strong></div>`;
+            }
+        }
+
+        function renderKanban() {
+            const groups = [
+                { key: "entrada", title: "Entrando" },
+                { key: "processo", title: "Em processo" },
+                { key: "saida", title: "Saindo" },
+                { key: "pausada", title: "Pausadas" }
+            ];
+
+            $("kanban").innerHTML = groups.map(g => {
+                const ops = state.ops.filter(op => op.status === g.key);
+                return `
+                    <div class="card">
+                        <div class="card-title">
+                            <div>
+                                <h3>${g.title}</h3>
+                                <p>${ops.length} OP(s)</p>
+                            </div>
+                        </div>
+                        <div class="record-list">
+                            ${ops.length ? ops.map(op => `
+                                <div class="record">
+                                    <div class="record-index">${op.rotativo}</div>
+                                    <div>
+                                        <h4>OP ${op.numero}</h4>
+                                        <p>${op.produto} · ${fmt(op.qtd)} / ${fmt(op.total)} pçs</p>
+                                    </div>
+                                    <span class="status ${statusClass(op.status)}">${statusLabel(op.status)}</span>
+                                </div>
+                            `).join("") : '<div class="empty">Vazio</div>'}
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function render() {
+            renderOps();
+            renderActive();
+            renderDetails();
+            renderKanban();
+        }
+
+        function requireOp() {
+            const op = activeOp();
+            if (!op) {
+                toast("Selecione uma OP primeiro");
+                return null;
+            }
+            return op;
+        }
+
+        function setStatus(status) {
+            const op = requireOp();
+            if (!op) return;
+            op.status = status;
+            if (status === "pausada") {
+                addHistory(op, "Status", "OP pausada");
+            } else {
+                addHistory(op, "Status", "OP marcada como " + statusLabel(status));
+            }
+            render();
+            toast("Status atualizado");
+        }
+
+        function bind() {
+            document.querySelectorAll(".tab").forEach(tab => {
+                tab.addEventListener("click", () => {
+                    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+                    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+                    tab.classList.add("active");
+                    $(tab.dataset.tab).classList.add("active");
+                });
+            });
+
+            $("btnAddOp").addEventListener("click", () => {
+                addOp({
+                    numero: $("opNumero").value || undefined,
+                    rotativo: $("opRotativo").value || undefined,
+                    produto: $("opProduto").value || undefined,
+                    status: $("opStatus").value,
+                    total: 1000
+                });
+                $("opNumero").value = "";
+                $("opRotativo").value = "";
+                $("opProduto").value = "";
+            });
+
+            $("btnSample").addEventListener("click", () => {
+                addOp({
+                    numero: String(431 + state.ops.length).padStart(6, "0"),
+                    rotativo: String(13 + state.ops.length),
+                    produto: "Peça demo · Cliente " + String.fromCharCode(65 + state.ops.length),
+                    status: ["entrada", "processo", "saida"][state.ops.length % 3],
+                    total: 800 + state.ops.length * 120
+                });
+            });
+
+            $("btnApontar").addEventListener("click", () => {
+                const op = requireOp();
+                if (!op) return;
+                const qtd = num($("apQtd").value);
+                const peso = num($("apPeso").value);
+
+                if (qtd <= 0) {
+                    toast("Informe quantidade maior que zero");
+                    return;
+                }
+
+                const item = {
+                    id: uid(),
+                    qtd,
+                    peso,
+                    rotativo: $("apRot").value || op.rotativo,
+                    ampDes: $("apAmpDes").value,
+                    ampBanho: $("apAmpBanho").value,
+                    operador: $("apOperador").value || "Operador",
+                    hora: formatDateTime(),
+                    status: "Lançado"
+                };
+
+                op.apontamentos.unshift(item);
+                op.qtd += qtd;
+                op.peso += peso;
+                op.status = op.qtd >= op.total ? "saida" : "processo";
+                addHistory(op, "Apontamento", `${fmt(qtd)} pçs apontadas no rotativo ${item.rotativo}`);
+                render();
+                toast("Apontamento incluído");
+            });
+
+            $("btnClearAp").addEventListener("click", () => {
+                $("apQtd").value = "";
+                $("apPeso").value = "";
+                toast("Campos limpos");
+            });
+
+            $("btnEntrada").addEventListener("click", () => setStatus("entrada"));
+            $("btnProcesso").addEventListener("click", () => setStatus("processo"));
+            $("btnSaida").addEventListener("click", () => setStatus("saida"));
+
+            $("btnDuplicar").addEventListener("click", () => {
+                const op = requireOp();
+                if (!op) return;
+                addOp({
+                    numero: op.numero + "-2",
+                    rotativo: String(Number(op.rotativo || 0) + 1),
+                    produto: op.produto,
+                    status: "entrada",
+                    total: op.total
+                });
+                toast("Nova entrada criada");
+            });
+
+            $("btnFinalizar").addEventListener("click", () => {
+                const op = requireOp();
+                if (!op) return;
+                op.status = "finalizada";
+                addHistory(op, "Finalização", "OP finalizada");
+                render();
+                toast("OP finalizada");
+            });
+
+            $("btnCamada").addEventListener("click", () => {
+                const op = requireOp();
+                if (!op) return;
+
+                const valores = [
+                    num($("cam1").value),
+                    num($("cam2").value),
+                    num($("cam3").value),
+                    num($("cam4").value),
+                    num($("cam5").value)
+                ];
+                const media = valores.reduce((a, b) => a + b, 0) / valores.length;
+
+                op.camadas.unshift({
+                    id: uid(),
+                    tipo: $("camTipo").value,
+                    valores,
+                    media,
+                    hora: formatDateTime()
+                });
+                addHistory(op, "Camadas", `${$("camTipo").value} registrada com média ${fmt(media, 1)}`);
+                render();
+                toast("Camadas salvas");
+            });
+
+            $("btnIniciarParada").addEventListener("click", () => {
+                const op = requireOp();
+                if (!op) return;
+
+                if (op.paradas.some(p => !p.fim)) {
+                    toast("Já existe parada aberta");
+                    return;
+                }
+
+                op.paradas.unshift({
+                    id: uid(),
+                    tipo: $("parTipo").value,
+                    ocorrencia: $("parOcorrencia").value,
+                    obs: $("parObs").value,
+                    inicio: nowTime(),
+                    fim: null
+                });
+                op.status = "pausada";
+                addHistory(op, "Parada", "Parada iniciada: " + $("parOcorrencia").value);
+                render();
+                toast("Parada iniciada");
+            });
+
+            $("btnFinalizarParada").addEventListener("click", () => {
+                const op = requireOp();
+                if (!op) return;
+
+                const parada = op.paradas.find(p => !p.fim);
+                if (!parada) {
+                    toast("Nenhuma parada aberta");
+                    return;
+                }
+
+                parada.fim = nowTime();
+                op.status = "processo";
+                addHistory(op, "Parada", "Parada finalizada: " + parada.ocorrencia);
+                render();
+                toast("Parada finalizada");
+            });
+
+            $("btnQualidade").addEventListener("click", () => {
+                const op = requireOp();
+                if (!op) return;
+
+                const qtd = num($("qtdRep").value);
+                if (qtd <= 0) {
+                    toast("Informe qtd. reprovada");
+                    return;
+                }
+
+                op.qualidade.unshift({
+                    id: uid(),
+                    qtd,
+                    motivo: $("motivoRep").value,
+                    obs: $("obsRep").value,
+                    hora: formatDateTime()
+                });
+                op.reprovado += qtd;
+                addHistory(op, "Qualidade", `${fmt(qtd)} pçs reprovadas por ${$("motivoRep").value}`);
+                render();
+                toast("Reprovação adicionada");
+            });
+
+            $("btnParadaRapida").addEventListener("click", () => {
+                const op = requireOp();
+                if (!op) return;
+                $("parObs").value = "Parada rápida lançada pelo operador.";
+                $("btnIniciarParada").click();
+            });
+
+            $("btnExport").addEventListener("click", () => {
+                const blob = new Blob([JSON.stringify(state.ops, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "apontamento-demo.json";
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            $("btnReset").addEventListener("click", () => {
+                state.ops = [];
+                state.activeId = null;
+                seed();
+                toast("Demo reiniciada");
+            });
+
+            $("btnSalvar").addEventListener("click", () => {
+                toast("Salvo no protótipo");
+            });
+        }
+
+        function tickClock() {
+            $("clock").textContent = new Date().toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+            renderActive();
+        }
+
+        bind();
+        //seed();
+        render();
+        tickClock();
+        setInterval(tickClock, 1000 * 30);
+    </script>
+}
